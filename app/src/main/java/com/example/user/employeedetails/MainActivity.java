@@ -7,8 +7,12 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.ContextMenu;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -22,12 +26,16 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int EDIT = 0,DELETE = 1;
     EditText empName,empEmail,empPhone,empDob,empAddress;
     ImageView empImg;
     List<Employee> Employees = new ArrayList<Employee>();
     ListView employeeListView;
     Uri imageUri = Uri.parse("android.resource://com.example.user.employeedetails/drawable/business_man_blue");
     DatabaseHandler dbHandler;
+    int longClickedItemIndex;
+    ArrayAdapter<Employee> employeeAdapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +50,15 @@ public class MainActivity extends AppCompatActivity {
         empImg = (ImageView) findViewById(R.id.empImg);
         employeeListView = (ListView) findViewById(R.id.employeesList);
         dbHandler = new DatabaseHandler(getApplicationContext());
+
+        registerForContextMenu(employeeListView);
+        employeeListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                longClickedItemIndex = position;
+                return false;
+            }
+        });
         TabHost tabHost = (TabHost) findViewById(R.id.tabHost);
         tabHost.setup();
         TabHost.TabSpec tabSpec = tabHost.newTabSpec("Add Employee");
@@ -66,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
                if(!employeeExists(employee)) {
                    dbHandler.createEmployee(employee);
                    Employees.add(employee);
+                   employeeAdapter.notifyDataSetChanged();
                    //populateList();
                    //Employees.add(new Employee(1,empName.getText().toString(),empEmail.getText().toString(),empPhone.getText().toString(),empDob.getText().toString(),empAddress.getText().toString(),imageUri));
                    Toast.makeText(getApplicationContext(), String.valueOf(empName.getText()) + " has been added to system successfully", Toast.LENGTH_SHORT).show();
@@ -121,6 +139,31 @@ public class MainActivity extends AppCompatActivity {
         populateList();
     }
 
+    public void onCreateContextMenu(ContextMenu menu, View view, ContextMenu.ContextMenuInfo menuInfo)
+    {
+        super.onCreateContextMenu(menu,view,menuInfo);
+
+        menu.setHeaderIcon(R.drawable.pencil_icon);
+        menu.setHeaderTitle("Employee Options");
+        menu.add(Menu.NONE,EDIT,menu.NONE,"Edit Employee");
+        menu.add(Menu.NONE,DELETE,menu.NONE,"Delete Employee");
+    }
+
+    public boolean onContextItemSelected(MenuItem item){
+        switch (item.getItemId()) {
+            case EDIT:
+                //TODO: Implement editing a contact
+                break;
+            case DELETE:
+                dbHandler.deleteEmployee(Employees.get(longClickedItemIndex));
+                Employees.remove(longClickedItemIndex);
+                employeeAdapter.notifyDataSetChanged();
+                Toast.makeText(getApplicationContext(),"Employee has been deleted",Toast.LENGTH_SHORT).show();
+                break;
+        }
+        return super.onContextItemSelected(item);
+    }
+
     private boolean employeeExists(Employee employee)
     {
 
@@ -146,8 +189,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void populateList(){
-        ArrayAdapter<Employee> adapter = new EmployeeListAdapter();
-        employeeListView.setAdapter(adapter);
+        employeeAdapter = new EmployeeListAdapter();
+        employeeListView.setAdapter(employeeAdapter);
     }
 
     private class EmployeeListAdapter extends ArrayAdapter<Employee> {
